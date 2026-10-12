@@ -28,16 +28,16 @@ h2:before{content:"";width:3px;height:18px;background:var(--ac);border-radius:3p
 .rail{display:flex;gap:14px;overflow-x:auto;padding:0 20px 6px;scroll-snap-type:x proximity;scrollbar-width:none;overscroll-behavior-x:contain}
 .rail::-webkit-scrollbar{display:none}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:12px;padding:14px 16px}
-.card{position:relative;flex:0 0 120px;scroll-snap-align:start;cursor:pointer;contain:layout style;transition:transform .2s}
-.grid .card{flex:none}
+.card{position:relative;flex:0 0 120px;width:120px;min-width:0;scroll-snap-align:start;cursor:pointer;contain:layout style;transition:transform .2s}
+.grid .card{flex:none;width:auto}
 .card:active{transform:scale(.96)}
 .ph{aspect-ratio:2/3;border-radius:var(--r);overflow:hidden;background:linear-gradient(110deg,var(--s2) 25%,var(--s3) 50%,var(--s2) 75%) 0 0/220% 100%;animation:sh 1.6s infinite linear;box-shadow:0 6px 18px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.04);position:relative}
 .ph:has(img.l){animation:none;background:var(--s2)}
 .ph:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,rgba(0,0,0,.45));pointer-events:none}
 @keyframes sh{to{background-position:-220% 0}}
-.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph{width:100%}.ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}.rk{position:absolute;top:8px;left:8px;z-index:2;background:rgba(8,8,12,.88);color:#fff;font-weight:700;font-size:11px;padding:3px 8px;border-radius:99px;border:1px solid var(--ln2)}
 .card p{font-size:13px;margin-top:8px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#e4dfe9}
-.match{position:absolute;top:8px;left:8px;background:rgba(8,8,12,.88);color:var(--ac);font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;border:1px solid rgba(245,177,74,.28)}
+.match{z-index:2;position:absolute;top:8px;left:8px;background:rgba(8,8,12,.88);color:var(--ac);font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;border:1px solid rgba(245,177,74,.28)}
 .hero{position:relative;margin:12px 16px 0;border-radius:var(--r-lg);overflow:hidden;min-height:min(440px,62dvh);display:flex;align-items:flex-end;background:var(--sf);box-shadow:0 20px 50px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04);cursor:pointer}
 .hero>.bg{position:absolute;inset:0;background-size:cover;background-position:center}
 .hero:before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(8,8,12,.1) 0%,rgba(8,8,12,.45) 45%,rgba(8,8,12,.96) 92%),linear-gradient(90deg,rgba(8,8,12,.7) 0%,transparent 55%)}
@@ -118,7 +118,7 @@ img{opacity:0;transition:opacity .35s}img.l{opacity:1}
 @media(hover:hover){.card:hover{transform:translateY(-4px)}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @media(max-width:639px){h1{font-size:30px}}
-@media(min-width:640px){.hero{min-height:460px}.hero h3{font-size:40px}.grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}.card{flex-basis:126px}}
+@media(min-width:640px){.hero{min-height:460px}.hero h3{font-size:40px}.grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}.card{flex-basis:126px;width:126px}}
 select.fld{appearance:none;-webkit-appearance:none;background:var(--sf) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8a98' stroke-width='2' stroke-linecap='round'><path d='M6 9l6 6 6-6'/></svg>") no-repeat right 14px center/18px;padding-right:44px}select.fld option{background:#13131b;color:#f1f1f6}.rg{color:var(--ac)}
 </style>
 </head>
@@ -166,10 +166,10 @@ const slim=s=>({id:s.id,name:s.name,poster_path:s.poster_path,backdrop_path:s.ba
 const yr=s=>(s.first_air_date||'').slice(0,4);
 
 /* ---------- cards ---------- */
-function card(s,match){
+function card(s,match,rank){
   CACHE[s.id]=Object.assign(CACHE[s.id]||{},s);
   const img=s.poster_path?`<img loading="lazy" decoding="async" alt="" src="${IMG}w342${s.poster_path}">`:'';
-  return `<div class="card" data-id="${s.id}"><div class="ph">${img}</div>${match?`<span class="match">${match}%</span>`:''}<p>${esc(s.name)}</p></div>`;
+  return `<div class="card" data-id="${s.id}"><div class="ph">${img}</div>${match?`<span class="match">${match}%</span>`:''}${rank?`<span class="rk">#${rank}</span>`:''}<p>${esc(s.name)}</p></div>`;
 }
 const rail=(title,html)=>html?`<h2>${esc(title)}</h2><div class="rail">${html}</div>`:'';
 const noKey=()=>`<div class="note"><b>Add your TMDB key to start.</b><br>Create a free account at themoviedb.org, open Settings, then API, and paste the key in Settings here.<br><br><button class="b p" onclick="go('settings')">Open settings</button></div>`;
@@ -201,15 +201,25 @@ async function ottList(region){
     return ids.length?{name,id:ids.join('|')}:null;
   }).filter(Boolean);
 }
+async function trendFor(p,region){
+  const base={with_watch_providers:p.id,watch_region:region,with_watch_monetization_types:'flatrate',sort_by:'popularity.desc','vote_count.gte':5};
+  const since=new Date(Date.now()-120*864e5).toISOString().slice(0,10);
+  const out=[],seen=new Set();
+  for(const extra of [{'air_date.gte':since},{}]){ // 1st: currently airing/recent; 2nd: fill-up only if needed
+    for(let pg=1;pg<=3&&out.length<15;pg++){
+      let r;try{r=await api('/discover/tv',{...base,...extra,page:pg},18e5)}catch(e){break}
+      for(const x of r.results||[])if(x.poster_path&&!seen.has(x.id)&&!S.watched[x.id]&&!S.hide[x.id]){seen.add(x.id);out.push(x)}
+      if(pg>=r.total_pages)break;
+    }
+    if(out.length>=15)break;
+  }
+  return{name:p.name,list:out.slice(0,15)};
+}
 async function fetchOTT(){
   if(!S.tmdb)return [];
-  const region=S.region||'US',P=prof();
+  const region=S.region||'US';
   const provs=await ottList(region);
-  return Promise.all(provs.map(p=>
-    api('/discover/tv',{with_watch_providers:p.id,watch_region:region,with_watch_monetization_types:'flatrate',sort_by:'popularity.desc','vote_count.gte':10},18e5)
-    .then(r=>({name:p.name,list:(r.results||[]).filter(x=>x.poster_path&&!S.watched[x.id]&&!S.hide[x.id]).sort((a,b)=>lscore(b,P)-lscore(a,P)).slice(0,15)}))
-    .catch(()=>({name:p.name,list:[]}))
-  ));
+  return Promise.all(provs.map(p=>trendFor(p,region).catch(()=>({name:p.name,list:[]}))));
 }
 
 /* ---------- recommendation engine ---------- */
@@ -304,7 +314,7 @@ async function renderForYou(){
     m.innerHTML=`<h1>For you</h1><div class="empty">Add a few series you've watched and your personalized picks will appear here. <br><br>Here's what's trending on major OTTs right now:</div><div id="ott-empty" style="padding-bottom:20px"></div>`;
     try{
       const ott=await fetchOTT();let h='';
-      ott.forEach(({name,list})=>{if(list.length)h+=rail(`Trending on ${name}`,list.map(s=>card(slim(s))).join(''))});
+      ott.forEach(({name,list})=>{if(list.length)h+=rail(`Trending on ${name}`,list.map((s,i)=>card(slim(s),0,i+1)).join(''))});
       const el=m.querySelector('#ott-empty');if(el)el.innerHTML=h||'<p class="sub">Could not load trending series. Check your region in Settings.</p>';
     }catch(e){const el=m.querySelector('#ott-empty');if(el)el.innerHTML=`<p class="sub">${esc(e.message)}</p>`}
     return;
@@ -323,7 +333,7 @@ async function renderForYou(){
     html+=`<div class="hero" data-id="${hs.id}"><div class="bg" style="background-image:url('${bg}')"></div><div><span class="badge">Top pick · ${h.match}% match</span><h3>${esc(hs.name)}</h3><p class="why">${esc(h.why)}</p><div class="btns"><button class="b p" data-act="watch" data-id="${hs.id}">${S.watch[hs.id]?'In watchlist':'Add to watchlist'}</button><button class="b" data-act="seen" data-id="${hs.id}">Watched it</button></div></div></div>`;
     html+=rail('Top picks',items.slice(1,16).map(c=>card(c.s,c.match)).join(''));
   }
-  (ott||[]).forEach(({name,list})=>{if(list.length)html+=rail(`Trending on ${name}`,list.map(s=>card(slim(s))).join(''))});
+  (ott||[]).forEach(({name,list})=>{if(list.length)html+=rail(`Trending on ${name}`,list.map((s,i)=>card(slim(s),0,i+1)).join(''))});
   if(items.length)html+=rail('Hidden gems',items.filter(c=>c.pop<60&&c.s.vote_average>=7).slice(0,12).map(c=>card(c.s,c.match)).join(''));
   m.innerHTML=html;
 }
